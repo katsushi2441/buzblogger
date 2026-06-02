@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["title", "buzz_url", "buzz_summary", "genres", "article", "product_keywords"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "記事タイトル（例: なぜ「RTX5090品薄」がバズるのか）"
+    },
+    "buzz_url": {
+      "type": "string",
+      "description": "選んだ Togetter URL"
+    },
+    "buzz_summary": {
+      "type": "string",
+      "description": "バズ投稿の内容を2〜3行で要約"
+    },
+    "genres": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "AIxEC ジャンル（例: [\"AI\", \"副業\", \"GPU\"]）"
+    },
+    "article": {
+      "type": "string",
+      "description": "考察本文（400〜800字）。なぜバズっているか・市場性・AI視点・AIxEC視点を含む"
+    },
+    "selected_product_ids": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "description": "記事で紹介する AIxEC 商品の id（candidates の products リストから選ぶ、2〜4件）"
+    },
+    "hashtags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "投稿に付けるハッシュタグ（# なし、例: [\"AI\", \"AIxEC\", \"副業\"]）"
+    },
+    "cta": {
+      "type": "string",
+      "description": "AIxEC への誘導文（1行）"
+    }
+  }
+}

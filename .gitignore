@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+
+# Runtime outputs
+/storage/*
+!/storage/.gitkeep
+/tasks/*.json
+!/tasks/buzblog_post.schema.json
+
+# Local environment
+.env
+.venv/
+venv/
