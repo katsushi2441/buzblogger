@@ -15,6 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "storage" / "buzblogger.lock"
 LOG = ROOT / "storage" / "autonomous" / "buzblogger.log"
 WORKER_REPORT_API = os.environ.get("WORKER_REPORT_API", "https://aixec.exbridge.jp/api.php?path=worker/report")
+FIND_PRODUCTS_TIMEOUT = int(os.environ.get("BUZBLOGGER_FIND_PRODUCTS_TIMEOUT", "180"))
+CLAUDE_TIMEOUT = int(os.environ.get("BUZBLOGGER_CLAUDE_TIMEOUT", "600"))
+POST_TIMEOUT = int(os.environ.get("BUZBLOGGER_POST_TIMEOUT", "120"))
 
 
 def log(msg: str):
@@ -100,7 +103,7 @@ def main():
             report_worker("ok", 0, "候補なしでスキップ")
             return
 
-        run([sys.executable, "scripts/find_related_products.py"], timeout=60)
+        run([sys.executable, "scripts/find_related_products.py"], timeout=FIND_PRODUCTS_TIMEOUT)
 
         with_products_file = ROOT / "tasks" / "togetter_with_products.json"
         if not with_products_file.exists():
@@ -112,12 +115,12 @@ def main():
             return
 
         if not args.skip_claude:
-            run([sys.executable, "scripts/claude_buzblogger.py"], timeout=600)
+            run([sys.executable, "scripts/claude_buzblogger.py"], timeout=CLAUDE_TIMEOUT)
 
         post_cmd = [sys.executable, "scripts/post_buzblog.py"]
         if args.dry_run:
             post_cmd.append("--dry-run")
-        run(post_cmd, timeout=120)
+        run(post_cmd, timeout=POST_TIMEOUT)
 
         report_worker("ok", len(with_products), f"投稿完了 候補{len(with_products)}件")
         log("pipeline complete")

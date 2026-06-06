@@ -35,6 +35,8 @@ KEYWORD_GENRE_MAP = [
 
 # マッチなし時のフォールバックジャンル（とにかく1件は投稿）
 FALLBACK_GENRE = "人気書籍"
+PRODUCT_SEARCH_CACHE: dict[tuple[str, int], list[dict]] = {}
+RANKING_CACHE: dict[int, list[dict]] = {}
 
 
 def detect_genres(title: str) -> list[str]:
@@ -47,29 +49,42 @@ def detect_genres(title: str) -> list[str]:
 
 
 def search_products(keyword: str, limit: int = 3) -> list[dict]:
+    cache_key = (keyword, limit)
+    if cache_key in PRODUCT_SEARCH_CACHE:
+        return PRODUCT_SEARCH_CACHE[cache_key]
+
     params = urlencode({"path": "products", "q": keyword, "limit": limit})
     url = f"{AIXEC_API}?{params}"
     req = Request(url, headers={"User-Agent": "buzblogger/1.0"})
     try:
-        with urlopen(req, timeout=15) as res:
+        with urlopen(req, timeout=10) as res:
             data = json.loads(res.read().decode("utf-8"))
-        return data.get("items") or []
+        items = data.get("items") or []
+        PRODUCT_SEARCH_CACHE[cache_key] = items
+        return items
     except Exception as e:
         print(f"  search error ({keyword}): {e}")
+        PRODUCT_SEARCH_CACHE[cache_key] = []
         return []
 
 
 def fetch_ranking_products(limit: int = 6) -> list[dict]:
     """人気ランキングトップの商品をフォールバック用に取得する"""
+    if limit in RANKING_CACHE:
+        return RANKING_CACHE[limit]
+
     params = urlencode({"path": "products", "sort": "popular", "limit": limit})
     url = f"{AIXEC_API}?{params}"
     req = Request(url, headers={"User-Agent": "buzblogger/1.0"})
     try:
-        with urlopen(req, timeout=15) as res:
+        with urlopen(req, timeout=10) as res:
             data = json.loads(res.read().decode("utf-8"))
-        return data.get("items") or []
+        items = data.get("items") or []
+        RANKING_CACHE[limit] = items
+        return items
     except Exception as e:
         print(f"  ranking fetch error: {e}")
+        RANKING_CACHE[limit] = []
         return []
 
 
