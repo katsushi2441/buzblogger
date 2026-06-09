@@ -37,6 +37,9 @@ RAW_OUT = ROOT / "tasks" / "buzblog_post.claude_raw.json"
 OLLAMA_API = os.environ.get("BUZBLOGGER_OLLAMA_API", os.environ.get("OLLAMA_API", "https://exbridge.ddns.net/api/generate"))
 OLLAMA_MODEL = os.environ.get("BUZBLOGGER_OLLAMA_MODEL", os.environ.get("OLLAMA_MODEL", "gemma4:e4b"))
 OLLAMA_TIMEOUT = int(os.environ.get("BUZBLOGGER_OLLAMA_TIMEOUT", "180"))
+CLAUDE_MODEL = os.environ.get("BUZBLOGGER_CLAUDE_MODEL", os.environ.get("CLAUDE_MODEL", "haiku"))
+CODEX_MODEL = os.environ.get("BUZBLOGGER_CODEX_MODEL", os.environ.get("CODEX_MODEL", "gpt-5.5"))
+CODEX_TIMEOUT = int(os.environ.get("BUZBLOGGER_CODEX_TIMEOUT", "240"))
 
 
 def compact_candidates(candidates):
@@ -126,6 +129,44 @@ def run_ollama(prompt: str) -> dict:
     return _extract_json(response)
 
 
+def _find_codex_bin() -> str:
+    r = subprocess.run(["which", "codex"], capture_output=True, text=True)
+    if r.returncode == 0 and r.stdout.strip():
+        return r.stdout.strip()
+    candidate = Path("/home/kojima/.vscode-server/extensions/openai.chatgpt-26.513.21555-linux-x64/bin/linux-x86_64/codex")
+    if candidate.exists():
+        return str(candidate)
+    raise FileNotFoundError("codex binary not found")
+
+
+def run_codex(prompt: str) -> dict:
+    codex_prompt = prompt + """
+
+必ずJSONオブジェクトのみで返してください。説明文、Markdown、コードフェンスは禁止です。
+"""
+    result = subprocess.run(
+        [
+            _find_codex_bin(),
+            "exec",
+            "--skip-git-repo-check",
+            "--sandbox",
+            "read-only",
+            "--model",
+            CODEX_MODEL,
+            "--cd",
+            str(ROOT),
+            codex_prompt,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=CODEX_TIMEOUT,
+    )
+    RAW_OUT.write_text(result.stdout + "\n--- STDERR ---\n" + result.stderr, encoding="utf-8")
+    if result.returncode != 0:
+        raise RuntimeError(f"codex failed returncode={result.returncode}: {(result.stderr or result.stdout)[:500]}")
+    return _extract_json(result.stdout)
+
+
 def build_rule_based_post(candidates: list[dict]) -> dict:
     def candidate_score(candidate: dict) -> tuple:
         products = candidate.get("products") or []
@@ -209,6 +250,8 @@ CANDIDATES_WITH_PRODUCTS:
         "--input-format", "text",
         "--output-format", "json",
         "--json-schema", SCHEMA.read_text(encoding="utf-8"),
+        "--model",
+        CLAUDE_MODEL,
     ]
 
     MAX_ATTEMPTS = 3
@@ -225,15 +268,24 @@ CANDIDATES_WITH_PRODUCTS:
             time.sleep(15)
         else:
             if "session limit" in claude_error.lower() or "api_error_status\":429" in claude_error:
-                print("[fallback] Claude limit reached; using Ollama", file=sys.stderr)
+                print("[fallback] Claude limit reached; using Codex", file=sys.stderr)
                 try:
-                    post = run_ollama(prompt)
+                    post = run_codex(prompt)
                 except Exception as exc:
-                    print(f"[fallback] Ollama failed: {exc}; using rule-based generator", file=sys.stderr)
-                    post = build_rule_based_post(candidates)
+                    print(f"[fallback] Codex failed: {exc}; using Ollama", file=sys.stderr)
+                    try:
+                        post = run_ollama(prompt)
+                    except Exception as ollama_exc:
+                        print(f"[fallback] Ollama failed: {ollama_exc}; using rule-based generator", file=sys.stderr)
+                        post = build_rule_based_post(candidates)
                 if not is_valid_post(post):
-                    print("[fallback] Ollama returned invalid post; using rule-based generator", file=sys.stderr)
-                    post = build_rule_based_post(candidates)
+                    print("[fallback] fallback model returned invalid post; using rule-based generator", file=sys.stderr)
+                    try:
+                        post = run_ollama(prompt)
+                    except Exception:
+                        post = build_rule_based_post(candidates)
+                    if not is_valid_post(post):
+                        post = build_rule_based_post(candidates)
                 break
             raise SystemExit(result.stderr or result.stdout)
 
