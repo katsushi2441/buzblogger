@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -52,6 +53,13 @@ def worker_auto_cycle_job(dry_run: bool = False, **_meta: Any) -> dict[str, Any]
     finished_at = dt.datetime.now(dt.timezone.utc)
 
     response = {
+        "ok": result.returncode == 0,
+        "status": "ok" if result.returncode == 0 else "failed",
+        "items": 0,
+        "metrics": {},
+        "note": "",
+        "artifacts": [],
+        "error": None,
         "created_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),
         "dry_run": bool(dry_run),
@@ -65,6 +73,7 @@ def worker_auto_cycle_job(dry_run: bool = False, **_meta: Any) -> dict[str, Any]
     if result.returncode != 0 and "already running" in (result.stderr or "").lower():
         response["status"] = "skipped"
         response["reason"] = "already_running"
+        response["note"] = "buzblogger already running"
         return response
 
     if result.returncode != 0:
@@ -74,5 +83,25 @@ def worker_auto_cycle_job(dry_run: bool = False, **_meta: Any) -> dict[str, Any]
             f"stdout tail:\n{response['stdout_tail']}\n"
             f"stderr tail:\n{response['stderr_tail']}"
         )
+
+    stdout = result.stdout or ""
+    post_match = re.search(r"AIxSNS posted id=(\d+)", stdout)
+    hatena_ok = "はてなブログ投稿: ok" in stdout
+    if dry_run:
+        response["items"] = 0
+        response["metrics"] = {"dry_run": 1}
+        response["note"] = "buzblogger dry-run complete"
+    elif post_match:
+        post_id = post_match.group(1)
+        response["items"] = 1
+        response["metrics"] = {"posted": 1, "hatena_posted": 1 if hatena_ok else 0}
+        response["note"] = f"buzblogger posted AIxSNS id={post_id}"
+        response["artifacts"] = [
+            {"type": "url", "label": "AIxSNS", "url": f"https://aixec.exbridge.jp/sns.php?id={post_id}"}
+        ]
+    else:
+        response["items"] = 0
+        response["metrics"] = {"posted": 0}
+        response["note"] = "buzblogger completed without detected post id"
 
     return response

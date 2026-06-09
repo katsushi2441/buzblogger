@@ -41,7 +41,7 @@ def run(cmd: list[str], timeout=None):
 
 def report_worker(status: str = "ok", items: int = 0, note: str = ""):
     payload = json.dumps({
-        "name": "buzblogger",
+        "name": "buzblogger-enqueue",
         "status": status,
         "items": items,
         "note": note[:200],
@@ -122,7 +122,10 @@ def main():
             post_cmd.append("--dry-run")
         run(post_cmd, timeout=POST_TIMEOUT)
 
-        report_worker("ok", len(with_products), f"投稿完了 候補{len(with_products)}件")
+        if args.dry_run:
+            report_worker("ok", 0, f"dry-run完了 候補{len(with_products)}件")
+        else:
+            report_worker("ok", len(with_products), f"投稿完了 候補{len(with_products)}件")
         log("pipeline complete")
     except Exception as exc:
         report_worker("down", 0, f"エラー: {exc}")
