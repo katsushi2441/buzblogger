@@ -53,7 +53,8 @@ def mark_posted(url: str):
 
 
 def build_content(post: dict, dry_run: bool = False) -> str:
-    title = post.get("title", "")
+    search_query = (post.get("search_query") or "").strip()
+    title = search_query or post.get("title", "")
     article = post.get("article", "")
     buzz_url = post.get("buzz_url", "")
     products = post.get("resolved_products") or []
@@ -77,6 +78,9 @@ def build_content(post: dict, dry_run: bool = False) -> str:
 
     source_tweet_url = post.get("source_tweet_url", "")
     ref_url = source_tweet_url or buzz_url
+    buzz_summary = (post.get("buzz_summary") or "").strip()
+    if buzz_summary:
+        lines += ["参考：この話題が注目された背景", buzz_summary, ""]
     if ref_url:
         lines.append(f"元記事：{ref_url}")
 

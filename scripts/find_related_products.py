@@ -97,8 +97,10 @@ def main():
 
     for item in candidates:
         title = item.get("title", "")
+        search_query = item.get("search_query") or title
         genres = detect_genres(title)
         print(f"\n[{item['point']}] {title[:50]}")
+        print(f"  query: {search_query[:80]}")
         print(f"  genres: {genres}")
 
         if not genres:
@@ -107,14 +109,41 @@ def main():
 
         found_products = []
         seen_ids: set = set()
+        for keyword in [search_query, title]:
+            if not keyword:
+                continue
+            products = search_products(keyword, limit=6)
+            for p in products:
+                pid = p.get("id")
+                if pid and pid not in seen_ids:
+                    seen_ids.add(pid)
+                    go_params = urlencode({
+                        "to": "amazon",
+                        "kw": p.get("name", "")[:50],
+                        "pid": pid,
+                        "from": "buzblogger",
+                    })
+                    found_products.append({
+                        "id": pid,
+                        "name": p.get("name", ""),
+                        "maker": p.get("maker", ""),
+                        "price": p.get("sale_price"),
+                        "genre_kw": keyword,
+                        "go_url": f"https://aixec.exbridge.jp/go.php?{go_params}",
+                    })
+            if len(found_products) >= 2:
+                break
+
         for genre_kw in genres:
+            if len(found_products) >= 2:
+                break
             products = search_products(genre_kw, limit=3)
             for p in products:
                 pid = p.get("id")
                 if pid and pid not in seen_ids:
                     seen_ids.add(pid)
                     go_params = urlencode({
-                        "to": "rakuten",
+                        "to": "amazon",
                         "kw": p.get("name", "")[:50],
                         "pid": pid,
                         "from": "buzblogger",
@@ -138,7 +167,7 @@ def main():
                 for p in found_products:
                     if not p.get("go_url"):
                         go_params = urlencode({
-                            "to": "rakuten",
+                            "to": "amazon",
                             "kw": p.get("name", "")[:50],
                             "pid": p.get("id", ""),
                             "from": "buzblogger",

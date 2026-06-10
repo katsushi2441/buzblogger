@@ -1,11 +1,15 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["title", "buzz_url", "buzz_summary", "genres", "article", "product_keywords"],
+  "required": ["title", "search_query", "buzz_url", "genres", "article", "product_keywords"],
   "properties": {
     "title": {
       "type": "string",
-      "description": "記事タイトル（例: なぜ「RTX5090品薄」がバズるのか）"
+      "description": "検索クエリをそのまま、または自然な記事タイトルにしたもの（例: 上棟式 差し入れ おすすめ）"
+    },
+    "search_query": {
+      "type": "string",
+      "description": "バズの裏にある検索クエリ。抽出できない場合は空文字"
     },
     "buzz_url": {
       "type": "string",
@@ -13,7 +17,7 @@
     },
     "buzz_summary": {
       "type": "string",
-      "description": "バズ投稿の内容を2〜3行で要約"
+      "description": "バズ投稿の内容を2〜3行で要約。本文末尾の参考情報扱い"
     },
     "genres": {
       "type": "array",
@@ -22,7 +26,7 @@
     },
     "article": {
       "type": "string",
-      "description": "考察本文（400〜800字）。なぜバズっているか・市場性・AI視点・AIxEC視点を含む"
+      "description": "検索クエリに答える実用記事（500〜900字）。読者の疑問に先に答え、必要なら末尾でバズの背景に触れる"
     },
     "selected_product_ids": {
       "type": "array",

@@ -190,18 +190,19 @@ def build_rule_based_post(candidates: list[dict]) -> dict:
     product_names = [p.get("name", "") for p in products if p.get("name")]
     product_keywords = sorted({g for g in genres if g} | {"話題", "商品", "書籍"})
     product_line = "、".join(name[:28] for name in product_names[:2]) if product_names else "関連商品"
+    search_query = short_title
     article = (
-        f"SNSで話題になっている「{title}」は、単なる一過性のネタではなく、"
-        "生活者の関心や購買行動がどこに向いているかを読む材料になる。\n\n"
-        f"話題の要点は、{summary[:220]}。こうした反応が集まる背景には、"
-        "日常の違和感、学び、消費体験への共感がある。AIxECの視点では、"
-        "バズを入口にして関連する商品や書籍を見つけることで、検索だけでは拾いにくい需要を発見できる。\n\n"
-        f"今回の関連候補としては、{product_line} などがある。"
-        "話題を読んで終わりにせず、そこから学びや買い物のヒントへつなげることが、"
-        "バズ活用の実用的な使い方だ。"
+        f"「{search_query}」で調べる人は、話題の背景だけでなく、具体的に何を選べばよいか、"
+        "どこから確認すればよいかを知りたいはずだ。\n\n"
+        f"まず確認したいのは、{summary[:180]} という点である。"
+        "話題の勢いに流されず、用途、価格、レビュー、関連する知識を並べて見ると判断しやすい。\n\n"
+        f"関連候補としては、{product_line} などがある。"
+        "書籍で理解を深める、道具やガジェットで実際に試す、Amazonで在庫や価格を確認する、"
+        "という順番で見ると失敗しにくい。SNSのバズは入口として使い、最後は自分の目的に合うかで選ぶのが実用的だ。"
     )
     return {
-        "title": f"{short_title}から考える、今チェックしたい関連商品",
+        "title": search_query,
+        "search_query": search_query,
         "buzz_url": candidate.get("url") or "",
         "buzz_summary": summary[:320],
         "genres": genres,
@@ -214,7 +215,7 @@ def build_rule_based_post(candidates: list[dict]) -> dict:
 
 
 def is_valid_post(post: dict) -> bool:
-    required = ["title", "buzz_url", "buzz_summary", "genres", "article", "product_keywords"]
+    required = ["title", "search_query", "buzz_url", "genres", "article", "product_keywords"]
     return isinstance(post, dict) and all(post.get(k) for k in required)
 
 
@@ -227,13 +228,14 @@ def main():
         raise SystemExit("no candidates with products — skipping")
 
     candidates_text = json.dumps(compact_candidates(candidates), ensure_ascii=False, indent=2)
-    prompt = f"""以下を読んで、AIxEC 商品への自然な導線になる記事を生成してください。
+    prompt = f"""以下を読んで、AIxEC 商品への自然な導線になる検索クエリ回答型の記事を生成してください。
 
 ## 手順
-1. candidates の中から、商品・書籍との関連が最も自然な1件を選ぶ
-2. その候補に紐づく products リストから、記事で紹介する商品を 2〜4件選ぶ（selected_product_ids に id を入れる）
-3. バズ話題を入口にして、選んだ商品を自然に紹介する考察記事を書く
-4. 商品と話題がうまくつながらない場合は、最もましな候補を選んで対応する
+1. candidates の中から、検索意図と商品・書籍との関連が最も自然な1件を選ぶ
+2. バズの裏にある検索クエリを search_query に入れる
+3. その検索クエリに答える実用記事を書く
+4. products リストから、記事で紹介する商品を 2〜4件選ぶ（selected_product_ids に id を入れる）
+5. バズの要約は buzz_summary に入れ、本文では末尾の参考情報扱いにする
 
 必ず JSON のみ出力してください。Markdown や説明文は不要です。
 
