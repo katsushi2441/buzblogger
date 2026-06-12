@@ -19,7 +19,7 @@ POSTED = ROOT / "storage" / "posted_urls.txt"
 def post_to_sns(content: str) -> dict:
     payload = json.dumps({"author": "buzblogger", "content": content}, ensure_ascii=False).encode("utf-8")
     req = Request(
-        "https://aixec.exbridge.jp/api.php?path=posts",
+        os.environ.get("AIXSNS_API", "http://127.0.0.1:8081/posts"),
         data=payload,
         headers={"Content-Type": "application/json", "User-Agent": "buzblogger/1.0"},
         method="POST",
