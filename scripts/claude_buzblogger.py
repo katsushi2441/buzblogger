@@ -34,7 +34,7 @@ CANDIDATES = ROOT / "tasks" / "togetter_with_products.json"
 SCHEMA = ROOT / "tasks" / "buzblog_post.schema.json"
 OUT = ROOT / "tasks" / "buzblog_post.generated.json"
 RAW_OUT = ROOT / "tasks" / "buzblog_post.claude_raw.json"
-OLLAMA_API = os.environ.get("BUZBLOGGER_OLLAMA_API", os.environ.get("OLLAMA_API", "https://exbridge.ddns.net/api/generate"))
+OLLAMA_API = os.environ.get("BUZBLOGGER_OLLAMA_API", os.environ.get("OLLAMA_API", "http://192.168.0.14:11434/api/generate"))
 OLLAMA_MODEL = os.environ.get("BUZBLOGGER_OLLAMA_MODEL", os.environ.get("OLLAMA_MODEL", "gemma4:e4b"))
 OLLAMA_TIMEOUT = int(os.environ.get("BUZBLOGGER_OLLAMA_TIMEOUT", "180"))
 CLAUDE_MODEL = os.environ.get("BUZBLOGGER_CLAUDE_MODEL", os.environ.get("CLAUDE_MODEL", "haiku"))
@@ -102,6 +102,8 @@ def run_ollama(prompt: str) -> dict:
         "prompt": fallback_prompt,
         "stream": False,
         "format": "json",
+        # gemma4 は思考型。think:false が無いと隠れ推論で response が空になる。
+        "think": False,
     }, ensure_ascii=False)
     result = subprocess.run(
         [
